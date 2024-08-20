@@ -1,0 +1,12 @@
+.infra_module:
+  stage: infra
+  when: manual
+  script:
+    - kubectl apply -f ./kubernetes_infra/infra/argo-${module_name}-app.yaml
+
+.logging_module:
+  stage: infra
+  when: manual
+  script:
+    - helm upgrade -i -f ./kubernetes_infra/argo/${module_name}/loki.yaml --set loki.storage.s3.endpoint=${minio_url} --set loki.storage.s3.accessKeyId=${minio_access_key} --set loki.storage.s3.secretAccessKey=${minio_secret_key}  loki --namespace=logging --create-namespace grafana/loki --version 6.7.1
+    - helm upgrade -i -f ./kubernetes_infra/argo/${module_name}/promtail.yaml  promtail --namespace=logging --create-namespace grafana/promtail --version 6.16.4

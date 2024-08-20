@@ -1,0 +1,6 @@
+include:
+  - /gitlab/stages.yaml
+  - /gitlab/variables.yaml
+  - /gitlab/rules.yaml
+  - /gitlab/defaults.yaml
+  - /gitlab/modules.yaml

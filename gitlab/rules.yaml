@@ -1,0 +1,7 @@
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+.bootstrap_rules:
+  rules:
+    - if: $CLUSTER_BOOTSTRAP == "yes"

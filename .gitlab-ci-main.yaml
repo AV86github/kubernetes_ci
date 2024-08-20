@@ -1,0 +1,7 @@
+include:
+  - /.defaults.yaml
+  - /gitlab/bootstrap_cluster.yaml
+
+# variables override
+variables:
+  var: val

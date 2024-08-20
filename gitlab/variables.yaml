@@ -1,0 +1,20 @@
+variables:
+  infra_repo: https://github.com/AV86github/kubernetes_infra.git
+  kubespray_repo: https://github.com/kubernetes-sigs/kubespray.git
+  KUBECONFIG: $CLUSTER_CONFIG
+  CLUSTER_BOOTSTRAP:
+    value: "no"
+    description: "Пропуск поднятия кластера через kubespray"
+    options:
+      - "no"
+      - "yes"
+  CLUSTER_IPS:
+    value: "192.168.31.231 192.168.31.232 192.168.31.233"
+    description: "Введите IP нод кластера через пробел"
+  CLUSTER_SIZE:
+    value: "tiny"
+    description: "Введите размер кластера (tiny = 1m, 2w. small = 1m, 4w. ha = 3m, 6w)"
+    options:
+      - tiny
+      - small
+      - ha

@@ -1,0 +1,8 @@
+stages:
+  - pre_checks
+  - bootstrap_cluster
+  - post_checks
+  - argocd
+  - infra
+  - build
+  - deploy

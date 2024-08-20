@@ -1,0 +1,117 @@
+pre_cheks:
+  stage: pre_checks
+  extends: .bootstrap_rules
+  script:
+    - echo Start pre checks
+    - git clone $infra_repo
+    - |
+      case $CLUSTER_SIZE in
+        "tiny")
+          export node_count=3
+          export nodes_name=(master1 worker1 worker2)
+          ;;
+        "small")
+          export node_count=5
+          export nodes_name=(master1 worker1 worker2 worker3 worker4)
+          ;;
+        "ha")
+          export node_count=9
+          export nodes_name=(master1 master2 master3 worker1 worker2 worker3 worker4 worker5 worker6)
+          ;;
+        *)
+          echo wrong CLUSTER_SIZE
+          exit 1
+
+        esac
+    - |
+      CLUSTER_IPA=($CLUSTER_IPS)
+      if [[ ! ${#CLUSTER_IPA[*]} -eq $node_count ]]; then
+        echo Введите корректные IP нод кластера
+        exit 1
+      fi
+    - |
+      echo ${nodes_name[*]}
+      for node_name_ind in ${!nodes_name[*]}; do
+        export cur_node=${nodes_name[$node_name_ind]}
+        export cur_ip=${CLUSTER_IPA[$node_name_ind]}
+        yq e -i '
+          .all.hosts.[env(cur_node)].ansible_host = strenv(cur_ip) |
+          .all.hosts.[env(cur_node)].ip = strenv(cur_ip) |
+          .all.hosts.[env(cur_node)].access_ip = strenv(cur_ip)
+        ' kubernetes_infra/inventory/$CLUSTER_SIZE/hosts.yaml
+      done
+      cat kubernetes_infra/inventory/$CLUSTER_SIZE/hosts.yaml
+  artifacts:
+    paths:
+      - kubernetes_infra/inventory/
+
+bootstrap:
+  stage: bootstrap_cluster
+  extends: .bootstrap_rules
+  script:
+    - echo start
+    - cat kubernetes_infra/inventory/$CLUSTER_SIZE/hosts.yaml
+    - git clone $kubespray_repo
+    - source $VENVDIR/bin/activate
+    - cd kubespray
+    - chmod 600 $SSH_KEY
+    - ansible-playbook --private-key $SSH_KEY -i ${CI_PROJECT_DIR}/kubernetes_infra/inventory/$CLUSTER_SIZE/hosts.yaml -b --become-user=root cluster.yml
+
+post_checks:
+  stage: post_checks
+  extends: .bootstrap_rules
+  script:
+    - kubectl get nodes
+    # taint
+    - kubectl taint  --overwrite nodes worker1 node-role=infra:NoSchedule
+    - kubectl label nodes worker1 infra=true
+
+argocd:
+  stage: argocd
+  script:
+    - git clone $infra_repo
+    - helm repo add argo https://argoproj.github.io/argo-helm
+    - helm upgrade --install -n argocd --create-namespace argocd argo/argo-cd --version 7.3.11 -f ./kubernetes_infra/infra/argo-cd.yaml
+    - kubectl apply -f ./kubernetes_infra/infra/argo-infra-project.yaml
+    - |
+      echo argo pass: $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+  artifacts:
+    paths:
+      - kubernetes_infra/
+    exclude:
+      - kubernetes_infra/.git/
+
+ingress:
+  variables:
+    module_name: ingress
+  extends: .infra_module
+
+metallb:
+  variables:
+    module_name: metallb
+  extends: .infra_module
+
+metricserver:
+  variables:
+    module_name: metricserver
+  extends: .infra_module
+
+nfs:
+  variables:
+    module_name: nfs
+  extends: .infra_module
+
+dashboard:
+  variables:
+    module_name: dashboard
+  extends: .infra_module
+
+monitoring:
+  variables:
+    module_name: monitoring
+  extends: .infra_module
+
+logging:
+  variables:
+    module_name: logging
+  extends: .logging_module
